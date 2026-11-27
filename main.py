@@ -1,3 +1,4 @@
+
 import os
 import re
 import json
@@ -103,6 +104,13 @@ ACTION RULES
 - For quote-update, use ONLY confirmed customer details and only fields from the selected existing form.
 - If the customer asks to prepare/fill the request, include ALL confirmed details in ONE quote-update patch.
 - Use navigation for real pages. Do not invent routes.
+
+STYLE (STRICT)
+- Reply in plain clean text ONLY. Never use markdown: no asterisks, no bold/italics, no backticks, no # headings, no tables, no code blocks, no bullet dashes with labels.
+- Never show product handles, slugs, ids, JSON keys or field labels such as "handle:", "price:", "السعر:" in the visible reply. Mention products by their human name only (Arabic name when the user writes Arabic). Handles belong only inside actions (add/navigate values) and context.
+- Mention a price only as a plain phrase like "٥٠ ريال قطري" or "50 QAR", never inside asterisks or labels. Keep numbers and Latin words from breaking Arabic sentences: write product names in Arabic when available.
+- Keep replies short, warm and well organized: 1 to 4 short lines, one idea per line, at most 3 products, no walls of text. Use simple numbering like "1) " only when listing products, with the product name and a short phrase.
+- Sound like a smart, friendly Gulf gifts consultant who knows Al Asayel well; end with one short useful question or next step when it helps.
 
 MEMORY
 - The frontend sends up to 40 recent messages plus current page, cart contents, form state and saved context.
@@ -211,9 +219,25 @@ def _sanitize_action(action: Any) -> Optional[Dict[str, Any]]:
     return out
 
 
+
+def _clean_reply(text: str) -> str:
+    t = str(text or "")
+    t = re.sub(r"```.*?```", "", t, flags=re.S)
+    t = re.sub(r"`([^`]*)`", r"\1", t)
+    t = re.sub(r"\*\*\s*([^*]*?)\s*\*\*", r"\1", t)
+    t = re.sub(r"(?<!\w)\*([^*\n]+?)\*(?!\w)", r"\1", t)
+    t = t.replace("*", "").replace("`", "")
+    t = re.sub(r"(?m)^\s{0,3}#{1,6}\s*", "", t)
+    t = re.sub(r"(?m)^\s*[-\u2022]\s+", "", t)
+    t = re.sub(r"(?im)^\s*(?:handle|slug|id)\s*[:\uff1a].*$", "", t)
+    t = re.sub(r"\(?\bhandle\s*[:\uff1a]\s*[a-z0-9-]+\)?", "", t, flags=re.I)
+    t = re.sub(r"\n{3,}", "\n\n", t)
+    return t.strip()
+
 def _sanitize_result(data: Any) -> Dict[str, Any]:
     if not isinstance(data, dict): raise ValueError("Model did not return a JSON object")
     reply = str(data.get("reply") or data.get("response") or data.get("message") or "").strip()
+    reply = _clean_reply(reply)
     if not reply: raise ValueError("Empty reply")
     actions = []
     for action in data.get("actions") or []:
