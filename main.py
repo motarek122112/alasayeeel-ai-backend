@@ -222,7 +222,7 @@ def _sanitize_action(action: Any) -> Optional[Dict[str, Any]]:
 
 
 def _clean_reply(text: str) -> str:
-    t = str(text or "")
+    t = str(text or "").replace("\\n", "\n").replace("\\t", " ")
     t = re.sub(r"```.*?```", "", t, flags=re.S)
     t = re.sub(r"`([^`]*)`", r"\1", t)
     t = re.sub(r"\*\*\s*([^*]*?)\s*\*\*", r"\1", t)
